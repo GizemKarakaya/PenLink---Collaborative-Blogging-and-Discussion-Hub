@@ -1,19 +1,46 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Home, Info, Briefcase, Phone, BookOpen, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, Home, Mail, Settings, LogIn, LogOut, User } from 'lucide-react';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, [location]);
+
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    setTimeout(() => {
+      localStorage.removeItem('user');
+      setUser(null);
+      setIsLoggingOut(false);
+      navigate('/');
+      setIsMenuOpen(false);
+    }, 1000);
+  };
+
+  // Build navigation based on user role
   const navigation = [
     { name: 'Ana Sayfa', href: '/', icon: Home },
-    { name: 'Blog', href: '/blog', icon: BookOpen },
-    { name: 'Tartışma', href: '/discussion', icon: MessageCircle },
-    { name: 'Hakkımızda', href: '/about', icon: Info },
-    { name: 'Hizmetler', href: '/services', icon: Briefcase },
-    { name: 'İletişim', href: '/contact', icon: Phone },
   ];
+
+  // Add Contact link only for non-admin users
+  if (!user || user.role !== 'admin') {
+    navigation.push({ name: 'İletişim', href: '/contact', icon: Mail });
+  }
+
+  // Add Admin link if user is admin
+  if (user && user.role === 'admin') {
+    navigation.push({ name: 'Admin', href: '/admin', icon: Settings });
+  }
 
   const isActive = (path) => location.pathname === path;
 
@@ -51,6 +78,52 @@ const Header = () => {
               );
             })}
           </nav>
+
+          {/* User Menu */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="text-sm font-medium text-gray-700">{user.name}</span>
+                  {user.role === 'admin' && (
+                    <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
+                      Admin
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="flex items-center px-3 py-2 text-gray-700 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoggingOut ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-1"></div>
+                      <span className="text-sm">Çıkış yapılıyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="w-4 h-4 mr-1" />
+                      <span className="text-sm">Çıkış</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Giriş Yap
+              </Link>
+            )}
+          </div>
 
 
           {/* Mobile menu button */}
@@ -90,7 +163,56 @@ const Header = () => {
                   </Link>
                 );
               })}
-              
+
+              {/* Mobile User Menu */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                {user ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center px-3 py-2">
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full mr-3"
+                      />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
+                        {user.role === 'admin' && (
+                          <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 rounded">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                      className="flex items-center w-full px-3 py-2 text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoggingOut ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-700 mr-3"></div>
+                          Çıkış yapılıyor...
+                        </>
+                      ) : (
+                        <>
+                          <LogOut className="w-5 h-5 mr-3" />
+                          Çıkış Yap
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                  >
+                    <LogIn className="w-5 h-5 mr-3" />
+                    Giriş Yap
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         )}

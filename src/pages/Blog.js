@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, User, Tag, Search, Filter, Plus, Heart, MessageCircle, Share } from 'lucide-react';
 
 const Blog = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [user, setUser] = useState(null);
   const postsPerPage = 3;
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   const categories = [
     { id: 'all', name: 'Tümü' },
@@ -172,18 +181,24 @@ const Blog = () => {
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Kategoriler</h3>
               <div className="space-y-2">
-                {categories.map((category) => (
-                  <button
+                <Link
+                  to="/"
+                  className={`w-full block text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    selectedCategory === 'all'
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Tümü
+                </Link>
+                {categories.filter(cat => cat.id !== 'all').map((category) => (
+                  <Link
                     key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      selectedCategory === category.id
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    to={`/category/${category.id}`}
+                    className="w-full block text-left px-3 py-2 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-100"
                   >
                     {category.name}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -218,10 +233,24 @@ const Blog = () => {
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
-                <button className="bg-gray-300 text-gray-500 px-6 py-3 rounded-lg cursor-not-allowed flex items-center">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Yeni Yazı (Giriş Gerekli)
-                </button>
+                {user ? (
+                  <Link
+                    to="/post/new"
+                    className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors flex items-center"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Yeni Post
+                  </Link>
+                ) : (
+                  <button
+                    disabled
+                    className="bg-gray-300 text-gray-500 px-6 py-3 rounded-lg cursor-not-allowed flex items-center opacity-60"
+                    title="Yeni post oluşturmak için giriş yapmalısınız"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Yeni Post (Giriş Gerekli)
+                  </button>
+                )}
               </div>
             </div>
 
@@ -255,7 +284,7 @@ const Blog = () => {
                       </div>
 
                       <h2 className="text-xl font-semibold text-gray-900 mb-3 hover:text-primary-600 transition-colors">
-                        <Link to={`/blog/${post.id}`}>{post.title}</Link>
+                        <Link to={`/post/${post.id}`}>{post.title}</Link>
                       </h2>
 
                       <p className="text-gray-600 mb-4 line-clamp-2">

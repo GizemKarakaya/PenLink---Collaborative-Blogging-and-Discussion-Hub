@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Calendar, User, Tag, Heart, MessageCircle, Share, Bookmark, ArrowLeft, Edit, Trash2 } from 'lucide-react';
 
 const BlogPost = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [user, setUser] = useState(null);
   const [comments, setComments] = useState([
     {
       id: 1,
@@ -59,17 +61,46 @@ const BlogPost = () => {
   };
 
   const handleLike = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     setIsLiked(!isLiked);
   };
 
   const handleBookmark = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     setIsBookmarked(!isBookmarked);
   };
 
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
   const handleCommentSubmit = (e) => {
     e.preventDefault();
-    // Yorum sistemi şimdilik devre dışı
-    alert('Yorum yapmak için giriş yapmanız gerekiyor.');
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (newComment.trim()) {
+      const comment = {
+        id: comments.length + 1,
+        author: user.name,
+        avatar: user.avatar,
+        content: newComment,
+        date: 'Şimdi',
+        likes: 0
+      };
+      setComments([...comments, comment]);
+      setNewComment('');
+    }
   };
 
   return (
@@ -78,11 +109,11 @@ const BlogPost = () => {
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Link
-            to="/blog"
+            to="/"
             className="inline-flex items-center text-gray-600 hover:text-primary-600 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Blog'a Dön
+            Ana Sayfaya Dön
           </Link>
         </div>
       </div>
@@ -121,17 +152,29 @@ const BlogPost = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleLike}
+                  disabled={!user}
                   className={`p-2 rounded-lg transition-colors ${
-                    isLiked ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-500'
+                    !user 
+                      ? 'text-gray-300 cursor-not-allowed opacity-50' 
+                      : isLiked 
+                        ? 'text-red-500 bg-red-50' 
+                        : 'text-gray-400 hover:text-red-500'
                   }`}
+                  title={!user ? 'Beğenmek için giriş yapmalısınız' : ''}
                 >
                   <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                 </button>
                 <button
                   onClick={handleBookmark}
+                  disabled={!user}
                   className={`p-2 rounded-lg transition-colors ${
-                    isBookmarked ? 'text-primary-500 bg-primary-50' : 'text-gray-400 hover:text-primary-500'
+                    !user 
+                      ? 'text-gray-300 cursor-not-allowed opacity-50' 
+                      : isBookmarked 
+                        ? 'text-primary-500 bg-primary-50' 
+                        : 'text-gray-400 hover:text-primary-500'
                   }`}
+                  title={!user ? 'Kaydetmek için giriş yapmalısınız' : ''}
                 >
                   <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
                 </button>
@@ -169,9 +212,15 @@ const BlogPost = () => {
               <div className="flex items-center space-x-6">
                 <button
                   onClick={handleLike}
+                  disabled={!user}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isLiked ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-100'
+                    !user 
+                      ? 'text-gray-400 cursor-not-allowed opacity-50' 
+                      : isLiked 
+                        ? 'text-red-500 bg-red-50' 
+                        : 'text-gray-600 hover:bg-gray-100'
                   }`}
+                  title={!user ? 'Beğenmek için giriş yapmalısınız' : ''}
                 >
                   <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                   <span>{blogPost.likes + (isLiked ? 1 : 0)}</span>
@@ -185,14 +234,16 @@ const BlogPost = () => {
                   <span>Paylaş</span>
                 </button>
               </div>
-              <div className="flex items-center space-x-2">
-                <button className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
-                  <Edit className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-red-600 transition-colors">
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
+              {user && user.role === 'admin' && (
+                <div className="flex items-center space-x-2">
+                  <button className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
+                    <Edit className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </article>
@@ -204,16 +255,44 @@ const BlogPost = () => {
           </h3>
 
           {/* Comment Form */}
-          <div className="bg-gray-50 rounded-lg p-6 mb-8 text-center">
-            <p className="text-gray-600 mb-4">Yorum yapmak için giriş yapmanız gerekiyor.</p>
-            <button
-              onClick={handleCommentSubmit}
-              className="bg-gray-300 text-gray-500 px-6 py-2 rounded-lg cursor-not-allowed"
-              disabled
-            >
-              Yorum Yap (Giriş Gerekli)
-            </button>
-          </div>
+          {user ? (
+            <form onSubmit={handleCommentSubmit} className="mb-8">
+              <div className="flex space-x-4">
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-full"
+                />
+                <div className="flex-1">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Yorumunuzu yazın..."
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      type="submit"
+                      className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                      Yorum Yap
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <div className="bg-gray-50 rounded-lg p-6 mb-8 text-center">
+              <p className="text-gray-600 mb-4">Yorum yapmak için giriş yapmanız gerekiyor.</p>
+              <Link
+                to="/login"
+                className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors inline-block"
+              >
+                Giriş Yap
+              </Link>
+            </div>
+          )}
 
           {/* Comments List */}
           <div className="space-y-6">

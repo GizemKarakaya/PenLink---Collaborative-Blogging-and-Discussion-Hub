@@ -2,13 +2,16 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import Home from './pages/Home';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Services from './pages/Services';
+import ProtectedRoute from './components/ProtectedRoute';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
-import Discussion from './pages/Discussion';
+import PostForm from './pages/PostForm';
+import Category from './pages/Category';
+import Contact from './pages/Contact';
+import Login from './pages/Login';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminPosts from './pages/AdminPosts';
+import AdminCategories from './pages/AdminCategories';
 
 function App() {
   return (
@@ -17,13 +20,51 @@ function App() {
         <Header />
         <main className="flex-1">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/services" element={<Services />} />
+            <Route path="/" element={<Blog />} />
+            <Route path="/post/:id" element={<BlogPost />} />
+            <Route 
+              path="/post/new" 
+              element={
+                <ProtectedRoute>
+                  <PostForm />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/post/edit/:id" 
+              element={
+                <ProtectedRoute>
+                  <PostForm />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/category/:id" element={<Category />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:id" element={<BlogPost />} />
-            <Route path="/discussion" element={<Discussion />} />
+            <Route path="/login" element={<Login />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/posts" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminPosts />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/categories" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminCategories />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </main>
         <Footer />
