@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import api from '../config/api';
 
 const PostForm = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const PostForm = () => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -26,26 +28,41 @@ const PostForm = () => {
     }
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
+    fetchCategories();
 
     // If edit mode, load post data
     if (isEditMode) {
-      // TODO: Load post data from API
-      setFormData({
-        title: 'Modern Web Geliştirmede En İyi Pratikler',
-        content: 'Web geliştirme dünyası sürekli olarak değişiyor...',
-        category: 'development',
-        tags: 'React, JavaScript, Web Development',
-        excerpt: '2024 yılında web geliştirme dünyasında dikkat edilmesi gereken önemli noktalar.'
-      });
+      fetchPost();
     }
   }, [id, navigate, isEditMode]);
 
-  const categories = [
-    { id: 'technology', name: 'Teknoloji' },
-    { id: 'design', name: 'Tasarım' },
-    { id: 'development', name: 'Geliştirme' },
-    { id: 'business', name: 'İş Dünyası' }
-  ];
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchPost = async () => {
+    try {
+      const response = await api.get(`/posts/${id}`);
+      const post = response.data;
+      setFormData({
+        title: post.title,
+        content: post.content,
+        category: post.category?._id || post.category,
+        tags: post.tags?.join(', ') || '',
+        excerpt: post.excerpt || ''
+      });
+      if (post.image) {
+        setImagePreview(post.image);
+      }
+    } catch (error) {
+      console.error('Error fetching post:', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -90,19 +107,29 @@ const PostForm = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Prepare form data with image
-    const submitData = {
-      ...formData,
-      image: image,
-      imagePreview: imagePreview
-    };
+    try {
+      const submitData = {
+        title: formData.title,
+        content: formData.content,
+        excerpt: formData.excerpt,
+        category: formData.category,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        image: imagePreview || null
+      };
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Post saved:', submitData);
-      setIsLoading(false);
+      if (isEditMode) {
+        await api.put(`/posts/${id}`, submitData);
+      } else {
+        await api.post('/posts', submitData);
+      }
+      
       navigate('/');
-    }, 1000);
+    } catch (error) {
+      console.error('Error saving post:', error);
+      alert('Yazı kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!user) {

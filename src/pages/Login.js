@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, ArrowLeft, User, Shield } from 'lucide-react';
+import api from '../config/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -26,49 +27,45 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
       const email = formData.email.toLowerCase().trim();
       const password = formData.password;
 
-      // Check admin credentials (email-based, toggle is just for UI)
-      if (email === 'admin@penlink.com' && password === 'admin123') {
+      const response = await api.post('/auth/login', {
+        email,
+        password
+      });
+
+      if (response.data && response.data.user && response.data.token) {
         const userData = {
-          id: 1,
-          name: 'Admin User',
-          email: formData.email,
-          role: 'admin',
+          id: response.data.user.id || response.data.user._id,
+          name: response.data.user.username || response.data.user.name || 'User',
+          email: response.data.user.email,
+          role: response.data.user.role || 'user',
+          token: response.data.token,
           avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
         };
         localStorage.setItem('user', JSON.stringify(userData));
-        setIsLoading(false);
-        navigate('/admin');
-        return;
-      }
-
-      // Check user credentials
-      if (email === 'user@example.com' && password === 'user123') {
-        const userData = {
-          id: 2,
-          name: 'Test User',
-          email: formData.email,
-          role: 'user',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face'
-        };
-        localStorage.setItem('user', JSON.stringify(userData));
-        setIsLoading(false);
-        navigate('/');
-        return;
-      }
-
-      // Invalid credentials
-      if (formData.isAdmin || email === 'admin@penlink.com') {
-        setError('Admin e-posta veya şifre hatalı');
+        
+        // Navigate based on role
+        if (userData.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
-        setError('E-posta veya şifre hatalı');
+        setError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
       }
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.');
+      }
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

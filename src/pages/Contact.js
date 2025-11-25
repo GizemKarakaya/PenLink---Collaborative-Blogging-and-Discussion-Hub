@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle } from 'lucide-react';
+import api from '../config/api';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -16,18 +17,22 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Form submission logic would go here
-    console.log('Form submitted:', formData);
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 3000);
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      message: ''
-    });
+    try {
+      await api.post('/contact', formData);
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 3000);
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        message: ''
+      });
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      alert('Mesaj gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
   };
 
   return (

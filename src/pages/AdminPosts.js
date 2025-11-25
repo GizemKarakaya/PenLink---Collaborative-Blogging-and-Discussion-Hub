@@ -1,42 +1,52 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Eye, ArrowLeft, Search } from 'lucide-react';
+import api from '../config/api';
 
 const AdminPosts = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const posts = [
-    {
-      id: 1,
-      title: 'Modern Web Geliştirmede En İyi Pratikler',
-      category: 'Geliştirme',
-      author: 'Ahmet Yılmaz',
-      date: '15 Mart 2024',
-      views: 156,
-      comments: 8,
-      status: 'published'
-    },
-    {
-      id: 2,
-      title: 'UI/UX Tasarımda Kullanıcı Deneyimi',
-      category: 'Tasarım',
-      author: 'Elif Kaya',
-      date: '12 Mart 2024',
-      views: 89,
-      comments: 12,
-      status: 'published'
-    },
-    {
-      id: 3,
-      title: 'Yapay Zeka ve Geleceğin Teknolojileri',
-      category: 'Teknoloji',
-      author: 'Mehmet Demir',
-      date: '10 Mart 2024',
-      views: 234,
-      comments: 15,
-      status: 'draft'
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/posts', { params: { limit: 100 } });
+      const postsData = response.data.posts || response.data || [];
+      const transformedPosts = postsData.map(post => ({
+        id: post._id,
+        title: post.title,
+        category: post.category?.name || 'Genel',
+        author: post.author?.username || 'Bilinmeyen',
+        date: new Date(post.createdAt).toLocaleDateString('tr-TR'),
+        views: 0,
+        comments: post.comments?.length || 0,
+        status: 'published'
+      }));
+      setPosts(transformedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm(`Bu yazıyı silmek istediğinizden emin misiniz?`)) {
+      try {
+        await api.delete(`/posts/${id}`);
+        fetchPosts(); // Refresh list
+      } catch (error) {
+        console.error('Error deleting post:', error);
+        alert('Yazı silinirken bir hata oluştu.');
+      }
+    }
+  };
 
   const filteredPosts = posts.filter(post =>
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

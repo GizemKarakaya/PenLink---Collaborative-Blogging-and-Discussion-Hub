@@ -1,44 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Edit, Trash2, ArrowLeft, Search, Folder } from 'lucide-react';
+import api from '../config/api';
 
 const AdminCategories = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryDescription, setEditCategoryDescription] = useState('');
 
-  const categories = [
-    {
-      id: 1,
-      name: 'Teknoloji',
-      description: 'Teknoloji ile ilgili yazılar',
-      postCount: 8,
-      slug: 'technology'
-    },
-    {
-      id: 2,
-      name: 'Tasarım',
-      description: 'UI/UX ve tasarım konuları',
-      postCount: 5,
-      slug: 'design'
-    },
-    {
-      id: 3,
-      name: 'Geliştirme',
-      description: 'Yazılım geliştirme ve programlama',
-      postCount: 7,
-      slug: 'development'
-    },
-    {
-      id: 4,
-      name: 'İş Dünyası',
-      description: 'İş ve girişimcilik konuları',
-      postCount: 4,
-      slug: 'business'
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/categories');
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    if (newCategoryName.trim() === '') return;
+    try {
+      await api.post('/categories', {
+        name: newCategoryName,
+        description: newCategoryDescription
+      });
+      setNewCategoryName('');
+      setNewCategoryDescription('');
+      fetchCategories();
+    } catch (error) {
+      console.error('Error adding category:', error);
+      alert('Kategori eklenirken bir hata oluştu.');
+    }
+  };
+
+  const handleEditClick = (category) => {
+    setEditCategoryId(category._id);
+    setEditCategoryName(category.name);
+    setEditCategoryDescription(category.description || '');
+  };
+
+  const handleUpdateCategory = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/categories/${editCategoryId}`, {
+        name: editCategoryName,
+        description: editCategoryDescription
+      });
+      setEditCategoryId(null);
+      setEditCategoryName('');
+      setEditCategoryDescription('');
+      fetchCategories();
+    } catch (error) {
+      console.error('Error updating category:', error);
+      alert('Kategori güncellenirken bir hata oluştu.');
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (window.confirm(`Bu kategoriyi silmek istediğinizden emin misiniz?`)) {
+      try {
+        await api.delete(`/categories/${id}`);
+        fetchCategories();
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        alert('Kategori silinirken bir hata oluştu.');
+      }
+    }
+  };
 
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -85,7 +130,7 @@ const AdminCategories = () => {
         {/* Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCategories.map((category) => (
-            <div key={category.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+            <div key={category._id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mr-4">
