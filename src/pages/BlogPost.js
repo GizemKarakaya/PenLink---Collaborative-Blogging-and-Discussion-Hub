@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Calendar, User, Tag, Heart, MessageCircle, Share, Bookmark, ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import api from '../config/api';
 
 const BlogPost = () => {
   const { id } = useParams();
@@ -9,63 +10,89 @@ const BlogPost = () => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      author: 'Ali Veli',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-      content: 'Çok faydalı bir yazı olmuş, teşekkürler!',
-      date: '2 gün önce',
-      likes: 3
-    },
-    {
-      id: 2,
-      author: 'Ayşe Yılmaz',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-      content: 'Bu konuda daha detaylı bilgi verebilir misiniz?',
-      date: '1 gün önce',
-      likes: 1
-    }
-  ]);
+  const [blogPost, setBlogPost] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [likesCount, setLikesCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // Mock blog post data
-  const blogPost = {
-    id: 1,
-    title: 'Modern Web Geliştirmede En İyi Pratikler',
-    content: `
-      <p>Web geliştirme dünyası sürekli olarak değişiyor ve gelişiyor. 2024 yılında dikkat edilmesi gereken en önemli noktaları sizlerle paylaşmak istiyorum.</p>
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+    fetchPost();
+    fetchComments();
+  }, [id]);
+
+  const fetchPost = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/posts/${id}`);
+      const post = response.data;
       
-      <h2>1. Responsive Tasarım</h2>
-      <p>Mobil cihazların kullanımının artmasıyla birlikte, responsive tasarım artık bir lüks değil, zorunluluk haline geldi. CSS Grid ve Flexbox gibi modern CSS özelliklerini kullanarak esnek ve uyumlu tasarımlar oluşturabilirsiniz.</p>
+      setLikesCount(post.likes?.length || 0);
       
-      <h2>2. Performans Optimizasyonu</h2>
-      <p>Kullanıcı deneyimini doğrudan etkileyen performans, web sitelerinin başarısında kritik rol oynar. Lazy loading, image optimization ve code splitting gibi tekniklerle sitenizin hızını artırabilirsiniz.</p>
+      // Check if user liked this post (after user is loaded)
+      const userData = localStorage.getItem('user');
+      if (userData && post.likes) {
+        const currentUser = JSON.parse(userData);
+        const userId = currentUser.id || currentUser._id;
+        setIsLiked(post.likes.some(likeId => likeId.toString() === userId.toString()));
+      }
       
-      <h2>3. SEO ve Erişilebilirlik</h2>
-      <p>Semantic HTML kullanımı, proper heading hierarchy ve alt text'ler gibi temel SEO ve erişilebilirlik prensiplerini uygulamak, sitenizin hem arama motorlarında hem de kullanıcılar arasında daha iyi performans göstermesini sağlar.</p>
-      
-      <h2>4. Güvenlik</h2>
-      <p>Web güvenliği konusunda HTTPS kullanımı, input validation ve XSS koruması gibi temel güvenlik önlemlerini almak artık standart haline geldi.</p>
-      
-      <p>Bu pratikleri uygulayarak daha kaliteli ve kullanıcı dostu web uygulamaları geliştirebilirsiniz.</p>
-    `,
-    author: 'Ahmet Yılmaz',
-    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-    date: '15 Mart 2024',
-    readTime: '5 dk',
-    likes: 24,
-    comments: 8,
-    tags: ['React', 'JavaScript', 'Web Development'],
-    category: 'development',
-    image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop'
+      setBlogPost({
+        id: post._id,
+        title: post.title,
+        content: post.content,
+        author: post.author?.username || 'Bilinmeyen',
+        authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+        date: new Date(post.createdAt).toLocaleDateString('tr-TR', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        readTime: '5 dk',
+        tags: post.tags || [],
+        category: post.category?.name || '',
+        image: post.image || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop'
+      });
+    } catch (error) {
+      console.error('Error fetching post:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLike = () => {
+  const fetchComments = async () => {
+    try {
+      const response = await api.get(`/comments/post/${id}`);
+      const transformedComments = response.data.map(comment => ({
+        id: comment._id,
+        author: comment.authorName || comment.author?.username || 'Bilinmeyen',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
+        content: comment.text,
+        date: new Date(comment.submissionDate || comment.createdAt).toLocaleDateString('tr-TR'),
+        likes: comment.likes?.length || 0
+      }));
+      setComments(transformedComments);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  const handleLike = async () => {
     if (!user) {
       navigate('/login');
       return;
     }
-    setIsLiked(!isLiked);
+    
+    try {
+      const response = await api.post(`/posts/${id}/like`);
+      setIsLiked(response.data.isLiked);
+      setLikesCount(response.data.likes);
+    } catch (error) {
+      console.error('Error liking post:', error);
+    }
   };
 
   const handleBookmark = () => {
@@ -74,34 +101,52 @@ const BlogPost = () => {
       return;
     }
     setIsBookmarked(!isBookmarked);
+    // TODO: Implement bookmark API endpoint
   };
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-  }, []);
-
-  const handleCommentSubmit = (e) => {
+  const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       navigate('/login');
       return;
     }
     if (newComment.trim()) {
-      const comment = {
-        id: comments.length + 1,
-        author: user.name,
-        avatar: user.avatar,
-        content: newComment,
-        date: 'Şimdi',
-        likes: 0
-      };
-      setComments([...comments, comment]);
-      setNewComment('');
+      try {
+        await api.post(`/posts/${id}/comments`, {
+          authorName: user.name || user.username,
+          text: newComment
+        });
+        setNewComment('');
+        fetchComments(); // Refresh comments
+      } catch (error) {
+        console.error('Error submitting comment:', error);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <p className="mt-4 text-gray-600">Yazı yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!blogPost) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Yazı bulunamadı.</p>
+          <Link to="/" className="text-primary-600 hover:underline mt-4 inline-block">
+            Ana Sayfaya Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -223,11 +268,11 @@ const BlogPost = () => {
                   title={!user ? 'Beğenmek için giriş yapmalısınız' : ''}
                 >
                   <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                  <span>{blogPost.likes + (isLiked ? 1 : 0)}</span>
+                  <span>{likesCount}</span>
                 </button>
                 <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                   <MessageCircle className="w-5 h-5" />
-                  <span>{blogPost.comments}</span>
+                  <span>{comments.length}</span>
                 </button>
                 <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                   <Share className="w-5 h-5" />

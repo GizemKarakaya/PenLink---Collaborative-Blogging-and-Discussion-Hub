@@ -1,44 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Folder, Users, MessageCircle, TrendingUp, Settings } from 'lucide-react';
+import api from '../config/api';
 
 const AdminDashboard = () => {
-  const stats = [
-    {
-      label: 'Toplam Yazı',
-      value: '24',
-      icon: BookOpen,
-      color: 'bg-blue-100 text-blue-600',
-      link: '/admin/posts'
-    },
-    {
-      label: 'Kategoriler',
-      value: '5',
-      icon: Folder,
-      color: 'bg-green-100 text-green-600',
-      link: '/admin/categories'
-    },
-    {
-      label: 'Kullanıcılar',
-      value: '156',
-      icon: Users,
-      color: 'bg-purple-100 text-purple-600',
-      link: '#'
-    },
-    {
-      label: 'Yorumlar',
-      value: '89',
-      icon: MessageCircle,
-      color: 'bg-orange-100 text-orange-600',
-      link: '#'
-    }
-  ];
+  const [stats, setStats] = useState([
+    { label: 'Toplam Yazı', value: '0', icon: BookOpen, color: 'bg-blue-100 text-blue-600', link: '/admin/posts' },
+    { label: 'Kategoriler', value: '0', icon: Folder, color: 'bg-green-100 text-green-600', link: '/admin/categories' },
+    { label: 'Kullanıcılar', value: '0', icon: Users, color: 'bg-purple-100 text-purple-600', link: '#' },
+    { label: 'Yorumlar', value: '0', icon: MessageCircle, color: 'bg-orange-100 text-orange-600', link: '#' }
+  ]);
+  const [recentPosts, setRecentPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const recentPosts = [
-    { id: 1, title: 'Modern Web Geliştirmede En İyi Pratikler', date: '15 Mart 2024', views: 156 },
-    { id: 2, title: 'UI/UX Tasarımda Kullanıcı Deneyimi', date: '12 Mart 2024', views: 89 },
-    { id: 3, title: 'Yapay Zeka ve Geleceğin Teknolojileri', date: '10 Mart 2024', views: 234 }
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsResponse, postsResponse] = await Promise.all([
+        api.get('/statistics/dashboard'),
+        api.get('/posts', { params: { limit: 3, sortBy: 'createdAt', order: 'desc' } })
+      ]);
+
+      const dashboardStats = statsResponse.data;
+      setStats([
+        { label: 'Toplam Yazı', value: dashboardStats.totalPosts?.toString() || '0', icon: BookOpen, color: 'bg-blue-100 text-blue-600', link: '/admin/posts' },
+        { label: 'Kategoriler', value: dashboardStats.totalCategories?.toString() || '0', icon: Folder, color: 'bg-green-100 text-green-600', link: '/admin/categories' },
+        { label: 'Kullanıcılar', value: dashboardStats.totalUsers?.toString() || '0', icon: Users, color: 'bg-purple-100 text-purple-600', link: '#' },
+        { label: 'Yorumlar', value: dashboardStats.totalComments?.toString() || '0', icon: MessageCircle, color: 'bg-orange-100 text-orange-600', link: '#' }
+      ]);
+
+      const posts = postsResponse.data.posts || postsResponse.data || [];
+      const transformedPosts = posts.map(post => ({
+        id: post._id,
+        title: post.title,
+        date: new Date(post.createdAt).toLocaleDateString('tr-TR'),
+        views: 0
+      }));
+      setRecentPosts(transformedPosts);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
