@@ -24,3 +24,4 @@ const contactMessageSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('ContactMessage', contactMessageSchema);
+

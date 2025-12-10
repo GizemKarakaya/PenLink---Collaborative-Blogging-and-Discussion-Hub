@@ -72,3 +72,4 @@ Protected routes require a JWT token in the Authorization header:
 ```
 Authorization: Bearer <token>
 ```
+

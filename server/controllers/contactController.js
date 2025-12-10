@@ -49,3 +49,17 @@ exports.getMessageById = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Delete message (Admin only)
+exports.deleteMessage = async (req, res) => {
+  try {
+    const message = await ContactMessage.findByIdAndDelete(req.params.id);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    res.json({ message: 'Contact message deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

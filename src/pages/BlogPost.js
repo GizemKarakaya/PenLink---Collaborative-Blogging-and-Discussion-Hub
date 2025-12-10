@@ -14,6 +14,24 @@ const BlogPost = () => {
   const [comments, setComments] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  // Calculate reading time based on content
+  const calculateReadTime = (content) => {
+    if (!content) return '1 dk';
+    
+    // Remove HTML tags and get plain text
+    const text = content.replace(/<[^>]*>/g, '').trim();
+    
+    // Count words (split by whitespace)
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Average reading speed: 200 words per minute
+    const readingSpeed = 200;
+    const minutes = Math.max(1, Math.ceil(wordCount / readingSpeed));
+    
+    return `${minutes} dk`;
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -40,18 +58,19 @@ const BlogPost = () => {
         setIsLiked(post.likes.some(likeId => likeId.toString() === userId.toString()));
       }
       
+      const isAdminAuthor = post.author?.role === 'admin' || post.author?.email === 'admin@penlink.com';
       setBlogPost({
         id: post._id,
         title: post.title,
         content: post.content,
         author: post.author?.username || 'Bilinmeyen',
-        authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+        authorAvatar: isAdminAuthor ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
         date: new Date(post.createdAt).toLocaleDateString('tr-TR', { 
           year: 'numeric', 
           month: 'long', 
           day: 'numeric' 
         }),
-        readTime: '5 dk',
+        readTime: calculateReadTime(post.content),
         tags: post.tags || [],
         category: post.category?.name || '',
         image: post.image || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop'
@@ -66,14 +85,17 @@ const BlogPost = () => {
   const fetchComments = async () => {
     try {
       const response = await api.get(`/comments/post/${id}`);
-      const transformedComments = response.data.map(comment => ({
-        id: comment._id,
-        author: comment.authorName || comment.author?.username || 'Bilinmeyen',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-        content: comment.text,
-        date: new Date(comment.submissionDate || comment.createdAt).toLocaleDateString('tr-TR'),
-        likes: comment.likes?.length || 0
-      }));
+      const transformedComments = response.data.map(comment => {
+        const isAdminComment = comment.author?.role === 'admin' || comment.author?.email === 'admin@penlink.com' || comment.authorName === 'admin';
+        return {
+          id: comment._id,
+          author: comment.authorName || comment.author?.username || 'Bilinmeyen',
+          avatar: isAdminComment ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
+          content: comment.text,
+          date: new Date(comment.submissionDate || comment.createdAt).toLocaleDateString('tr-TR'),
+          likes: comment.likes?.length || 0
+        };
+      });
       setComments(transformedComments);
     } catch (error) {
       console.error('Error fetching comments:', error);
@@ -102,6 +124,50 @@ const BlogPost = () => {
     }
     setIsBookmarked(!isBookmarked);
     // TODO: Implement bookmark API endpoint
+  };
+
+  const handleShare = async () => {
+    const postUrl = `${window.location.origin}/post/${id}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(postUrl);
+        setShareCopied(true);
+        // Show success message
+        alert('✅ Başarıyla kopyalandı!');
+        setTimeout(() => {
+          setShareCopied(false);
+        }, 2000);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = postUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            setShareCopied(true);
+            // Show success message
+            alert('✅ Başarıyla kopyalandı!');
+            setTimeout(() => {
+              setShareCopied(false);
+            }, 2000);
+          } else {
+            alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+          }
+        } catch (e) {
+          alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+      alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+    }
   };
 
   const handleCommentSubmit = async (e) => {
@@ -274,9 +340,17 @@ const BlogPost = () => {
                   <MessageCircle className="w-5 h-5" />
                   <span>{comments.length}</span>
                 </button>
-                <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <button 
+                  onClick={handleShare}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                    shareCopied 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="Post URL'sini kopyala"
+                >
                   <Share className="w-5 h-5" />
-                  <span>Paylaş</span>
+                  <span>{shareCopied ? 'Kopyalandı!' : 'Paylaş'}</span>
                 </button>
               </div>
               {user && user.role === 'admin' && (

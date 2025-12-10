@@ -37,13 +37,14 @@ const Login = () => {
       });
 
       if (response.data && response.data.user && response.data.token) {
+        const isAdmin = response.data.user.role === 'admin';
         const userData = {
           id: response.data.user.id || response.data.user._id,
           name: response.data.user.username || response.data.user.name || 'User',
           email: response.data.user.email,
           role: response.data.user.role || 'user',
           token: response.data.token,
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
+          avatar: isAdmin ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'
         };
         localStorage.setItem('user', JSON.stringify(userData));
         

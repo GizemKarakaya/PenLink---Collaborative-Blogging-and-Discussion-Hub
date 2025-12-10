@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Folder, Users, MessageCircle, TrendingUp, Settings } from 'lucide-react';
+import { BookOpen, Folder, Users, MessageCircle, TrendingUp, Settings, Mail } from 'lucide-react';
 import api from '../config/api';
 
 const AdminDashboard = () => {
@@ -8,7 +8,8 @@ const AdminDashboard = () => {
     { label: 'Toplam Yazı', value: '0', icon: BookOpen, color: 'bg-blue-100 text-blue-600', link: '/admin/posts' },
     { label: 'Kategoriler', value: '0', icon: Folder, color: 'bg-green-100 text-green-600', link: '/admin/categories' },
     { label: 'Kullanıcılar', value: '0', icon: Users, color: 'bg-purple-100 text-purple-600', link: '#' },
-    { label: 'Yorumlar', value: '0', icon: MessageCircle, color: 'bg-orange-100 text-orange-600', link: '#' }
+    { label: 'Yorumlar', value: '0', icon: MessageCircle, color: 'bg-orange-100 text-orange-600', link: '#' },
+    { label: 'İletişim Mesajları', value: '0', icon: Mail, color: 'bg-pink-100 text-pink-600', link: '/admin/messages' }
   ]);
   const [recentPosts, setRecentPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +31,8 @@ const AdminDashboard = () => {
         { label: 'Toplam Yazı', value: dashboardStats.totalPosts?.toString() || '0', icon: BookOpen, color: 'bg-blue-100 text-blue-600', link: '/admin/posts' },
         { label: 'Kategoriler', value: dashboardStats.totalCategories?.toString() || '0', icon: Folder, color: 'bg-green-100 text-green-600', link: '/admin/categories' },
         { label: 'Kullanıcılar', value: dashboardStats.totalUsers?.toString() || '0', icon: Users, color: 'bg-purple-100 text-purple-600', link: '#' },
-        { label: 'Yorumlar', value: dashboardStats.totalComments?.toString() || '0', icon: MessageCircle, color: 'bg-orange-100 text-orange-600', link: '#' }
+        { label: 'Yorumlar', value: dashboardStats.totalComments?.toString() || '0', icon: MessageCircle, color: 'bg-orange-100 text-orange-600', link: '#' },
+        { label: 'İletişim Mesajları', value: dashboardStats.totalContactMessages?.toString() || '0', icon: Mail, color: 'bg-pink-100 text-pink-600', link: '/admin/messages' }
       ]);
 
       const posts = postsResponse.data.posts || postsResponse.data || [];

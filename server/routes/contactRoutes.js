@@ -8,6 +8,9 @@ router.post('/', contactController.submitMessage);
 
 // Protected routes (Admin only)
 router.get('/', authenticate, requireAdmin, contactController.getAllMessages);
+// DELETE must come before GET /:id to avoid route conflict
+router.delete('/:id', authenticate, requireAdmin, contactController.deleteMessage);
 router.get('/:id', authenticate, requireAdmin, contactController.getMessageById);
 
 module.exports = router;
+

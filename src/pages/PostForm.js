@@ -39,7 +39,12 @@ const PostForm = () => {
   const fetchCategories = async () => {
     try {
       const response = await api.get('/categories');
-      setCategories(response.data);
+      // Ensure categories have _id or id field
+      const formattedCategories = response.data.map(cat => ({
+        ...cat,
+        id: cat._id || cat.id
+      }));
+      setCategories(formattedCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
@@ -105,15 +110,32 @@ const PostForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.category) {
+      alert('Lütfen bir kategori seçiniz.');
+      return;
+    }
+    
+    if (!formData.title.trim()) {
+      alert('Lütfen başlık giriniz.');
+      return;
+    }
+    
+    if (!formData.content.trim()) {
+      alert('Lütfen içerik giriniz.');
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
       const submitData = {
-        title: formData.title,
-        content: formData.content,
-        excerpt: formData.excerpt,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        excerpt: formData.excerpt.trim(),
         category: formData.category,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
         image: imagePreview || null
       };
 
@@ -126,7 +148,9 @@ const PostForm = () => {
       navigate('/');
     } catch (error) {
       console.error('Error saving post:', error);
-      alert('Yazı kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.error || error.message || 'Yazı kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.';
+      alert(`Hata: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -253,7 +277,7 @@ const PostForm = () => {
               >
                 <option value="">Kategori seçiniz</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category._id || category.id} value={category._id || category.id}>
                     {category.name}
                   </option>
                 ))}

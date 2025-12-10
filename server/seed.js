@@ -233,3 +233,4 @@ async function seedDatabase() {
 }
 
 seedDatabase();
+

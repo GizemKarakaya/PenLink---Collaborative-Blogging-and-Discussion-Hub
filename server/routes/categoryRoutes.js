@@ -14,3 +14,4 @@ router.put('/:id', authenticate, requireAdmin, categoryController.updateCategory
 router.delete('/:id', authenticate, requireAdmin, categoryController.deleteCategory);
 
 module.exports = router;
+

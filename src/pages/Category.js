@@ -21,6 +21,23 @@ const Category = () => {
     fetchPosts();
   }, [currentPage, id]);
 
+  // Calculate reading time based on content
+  const calculateReadTime = (content) => {
+    if (!content) return '1 dk';
+    
+    // Remove HTML tags and get plain text
+    const text = content.replace(/<[^>]*>/g, '').trim();
+    
+    // Count words (split by whitespace)
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Average reading speed: 200 words per minute
+    const readingSpeed = 200;
+    const minutes = Math.max(1, Math.ceil(wordCount / readingSpeed));
+    
+    return `${minutes} dk`;
+  };
+
   const fetchCategories = async () => {
     try {
       const response = await api.get('/categories');
@@ -51,12 +68,14 @@ const Category = () => {
       const response = await api.get('/posts', { params });
       const posts = response.data.posts || response.data || [];
       
-      const transformedPosts = posts.map(post => ({
-        id: post._id,
-        title: post.title,
-        excerpt: post.excerpt || post.content?.substring(0, 150) + '...',
-        author: post.author?.username || 'Bilinmeyen',
-        authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+      const transformedPosts = posts.map(post => {
+        const isAdminAuthor = post.author?.role === 'admin' || post.author?.email === 'admin@penlink.com';
+        return {
+          id: post._id,
+          title: post.title,
+          excerpt: post.excerpt || post.content?.substring(0, 150) + '...',
+          author: post.author?.username || 'Bilinmeyen',
+          authorAvatar: isAdminAuthor ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
         date: new Date(post.createdAt).toLocaleDateString('tr-TR', { 
           year: 'numeric', 
           month: 'long', 
@@ -65,11 +84,12 @@ const Category = () => {
         category: post.category?._id || post.category,
         categoryName: post.category?.name || 'Genel',
         tags: post.tags || [],
-        likes: post.likes?.length || 0,
-        comments: post.comments?.length || 0,
-        readTime: '5 dk',
+        likes: post.likesCount || post.likes?.length || 0,
+        comments: post.commentCount || 0,
+        readTime: calculateReadTime(post.content),
         image: post.image || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
-      }));
+        };
+      });
       
       setBlogPosts(transformedPosts);
       setTotalPages(response.data.totalPages || 1);

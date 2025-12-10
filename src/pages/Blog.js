@@ -7,10 +7,14 @@ const Blog = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTag, setSelectedTag] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [copiedPostId, setCopiedPostId] = useState(null);
+  const [likedPosts, setLikedPosts] = useState(new Set());
   const [user, setUser] = useState(null);
   const [blogPosts, setBlogPosts] = useState([]);
   const [categories, setCategories] = useState([{ id: 'all', name: 'Tümü' }]);
+  const [popularTags, setPopularTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const postsPerPage = 3;
@@ -26,6 +30,105 @@ const Blog = () => {
   useEffect(() => {
     fetchPosts();
   }, [currentPage, selectedCategory]);
+
+  // Handle like/unlike post
+  const handleLike = async (postId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const response = await api.post(`/posts/${postId}/like`);
+      const newLikedPosts = new Set(likedPosts);
+      
+      if (response.data.isLiked) {
+        newLikedPosts.add(postId);
+      } else {
+        newLikedPosts.delete(postId);
+      }
+      
+      setLikedPosts(newLikedPosts);
+      
+      // Update the likes count in the post
+      setBlogPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { ...post, likes: response.data.likes }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Error liking post:', error);
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Beğeni işlemi sırasında bir hata oluştu.');
+      }
+    }
+  };
+
+  // Copy post URL to clipboard
+  const handleShare = async (postId) => {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        // Show success message
+        alert('✅ Başarıyla kopyalandı!');
+        setTimeout(() => {
+          setCopiedPostId(null);
+        }, 2000);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = postUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            setCopiedPostId(postId);
+            // Show success message
+            alert('✅ Başarıyla kopyalandı!');
+            setTimeout(() => {
+              setCopiedPostId(null);
+            }, 2000);
+          } else {
+            alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+          }
+        } catch (e) {
+          alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+      alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+    }
+  };
+
+  // Calculate reading time based on content
+  const calculateReadTime = (content) => {
+    if (!content) return '1 dk';
+    
+    // Remove HTML tags and get plain text
+    const text = content.replace(/<[^>]*>/g, '').trim();
+    
+    // Count words (split by whitespace)
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Average reading speed: 200 words per minute
+    const readingSpeed = 200;
+    const minutes = Math.max(1, Math.ceil(wordCount / readingSpeed));
+    
+    return `${minutes} dk`;
+  };
 
   const fetchCategories = async () => {
     try {
@@ -57,13 +160,29 @@ const Blog = () => {
       const response = await api.get('/posts', { params });
       const posts = response.data.posts || response.data || [];
       
+      // Get current user to check liked posts
+      const userData = localStorage.getItem('user');
+      const currentUser = userData ? JSON.parse(userData) : null;
+      const newLikedPosts = new Set();
+      
       // Transform backend data to frontend format
-      const transformedPosts = posts.map(post => ({
-        id: post._id,
-        title: post.title,
-        excerpt: post.excerpt || post.content?.substring(0, 150) + '...',
-        author: post.author?.username || 'Bilinmeyen',
-        authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+      const transformedPosts = posts.map(post => {
+        const isAdminAuthor = post.author?.role === 'admin' || post.author?.email === 'admin@penlink.com';
+        const isLiked = currentUser && post.likes && post.likes.some(likeId => 
+          likeId.toString() === (currentUser.id || currentUser._id).toString()
+        );
+        
+        // Add to liked posts set if user liked it
+        if (isLiked) {
+          newLikedPosts.add(post._id);
+        }
+        
+        return {
+          id: post._id,
+          title: post.title,
+          excerpt: post.excerpt || post.content?.substring(0, 150) + '...',
+          author: post.author?.username || 'Bilinmeyen',
+          authorAvatar: isAdminAuthor ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
         date: new Date(post.createdAt).toLocaleDateString('tr-TR', { 
           year: 'numeric', 
           month: 'long', 
@@ -72,14 +191,32 @@ const Blog = () => {
         category: post.category?._id || post.category,
         categoryName: post.category?.name || 'Genel',
         tags: post.tags || [],
-        likes: 0,
-        comments: post.comments?.length || 0,
-        readTime: '5 dk',
+        likes: post.likesCount || post.likes?.length || 0,
+        comments: post.commentCount || 0,
+        readTime: calculateReadTime(post.content),
         image: post.image || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
-      }));
+        };
+      });
+      
+      // Update liked posts set
+      setLikedPosts(newLikedPosts);
       
       setBlogPosts(transformedPosts);
       setTotalPages(response.data.totalPages || 1);
+      
+      // Extract all unique tags from posts for popular tags
+      const allTags = transformedPosts.flatMap(post => post.tags || []);
+      const uniqueTags = [...new Set(allTags.map(tag => tag.trim()))].filter(tag => tag);
+      // Get most common tags (limit to 6)
+      const tagCounts = {};
+      allTags.forEach(tag => {
+        const normalizedTag = tag.trim();
+        tagCounts[normalizedTag] = (tagCounts[normalizedTag] || 0) + 1;
+      });
+      const sortedTags = Object.keys(tagCounts)
+        .sort((a, b) => tagCounts[b] - tagCounts[a])
+        .slice(0, 6);
+      setPopularTags(sortedTags.length > 0 ? sortedTags : ['React', 'JavaScript', 'UI/UX', 'AI', 'Startup', 'Design']);
     } catch (error) {
       console.error('Error fetching posts:', error);
       setBlogPosts([]);
@@ -88,11 +225,19 @@ const Blog = () => {
     }
   };
 
-  // Filter posts by search term (client-side filtering for search)
+  // Filter posts by search term and tag (client-side filtering)
   const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    
+    // Filter by tag if selected (case-insensitive, trim whitespace)
+    const matchesTag = selectedTag 
+      ? post.tags && post.tags.some(tag => 
+          tag && tag.trim().toLowerCase() === selectedTag.trim().toLowerCase()
+        )
+      : true;
+    
+    return matchesSearch && matchesTag;
   });
 
   // Pagination logic - posts already paginated from API
@@ -140,16 +285,19 @@ const Blog = () => {
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Kategoriler</h3>
               <div className="space-y-2">
-                <Link
-                  to="/"
-                  className={`w-full block text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                     selectedCategory === 'all'
                       ? 'bg-primary-100 text-primary-700'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   Tümü
-                </Link>
+                </button>
                 {categories.filter(cat => cat.id !== 'all').map((category) => (
                   <button
                     key={category.id}
@@ -172,15 +320,42 @@ const Blog = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Popüler Etiketler</h3>
               <div className="flex flex-wrap gap-2">
-                {['React', 'JavaScript', 'UI/UX', 'AI', 'Startup', 'Design'].map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-primary-100 hover:text-primary-700 cursor-pointer transition-colors"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+                {popularTags.length > 0 ? (
+                  popularTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        if (selectedTag && selectedTag.toLowerCase() === tag.toLowerCase()) {
+                          setSelectedTag(null); // Deselect if already selected
+                        } else {
+                          setSelectedTag(tag);
+                          setCurrentPage(1); // Reset to first page
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm cursor-pointer transition-colors ${
+                        selectedTag && selectedTag.toLowerCase() === tag.toLowerCase()
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">Henüz etiket bulunmamaktadır.</p>
+                )}
               </div>
+              {selectedTag && (
+                <button
+                  onClick={() => {
+                    setSelectedTag(null);
+                    setCurrentPage(1);
+                  }}
+                  className="mt-3 text-sm text-primary-600 hover:text-primary-700 underline"
+                >
+                  Filtreyi Temizle
+                </button>
+              )}
             </div>
           </div>
 
@@ -283,11 +458,30 @@ const Blog = () => {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <button className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
+                          <button 
+                            onClick={() => handleShare(post.id)}
+                            className={`p-2 transition-colors ${
+                              copiedPostId === post.id
+                                ? 'text-green-600 bg-green-50' 
+                                : 'text-gray-400 hover:text-primary-600'
+                            }`}
+                            title="Post URL'sini kopyala"
+                          >
                             <Share className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                            <Heart className="w-4 h-4" />
+                          <button 
+                            onClick={() => handleLike(post.id)}
+                            disabled={!user}
+                            className={`p-2 transition-colors ${
+                              !user
+                                ? 'text-gray-300 cursor-not-allowed opacity-50'
+                                : likedPosts.has(post.id)
+                                  ? 'text-red-500 hover:text-red-600'
+                                  : 'text-gray-400 hover:text-red-500'
+                            }`}
+                            title={!user ? 'Beğenmek için giriş yapmalısınız' : likedPosts.has(post.id) ? 'Beğeniyi kaldır' : 'Beğen'}
+                          >
+                            <Heart className={`w-4 h-4 ${likedPosts.has(post.id) ? 'fill-current' : ''}`} />
                           </button>
                         </div>
                       </div>

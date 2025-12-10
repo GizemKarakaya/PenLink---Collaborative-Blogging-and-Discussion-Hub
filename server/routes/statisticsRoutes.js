@@ -10,3 +10,4 @@ router.get('/posts-per-category', statisticsController.getPostsPerCategory);
 router.get('/dashboard', authenticate, requireAdmin, statisticsController.getDashboardStats);
 
 module.exports = router;
+
