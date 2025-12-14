@@ -410,13 +410,13 @@ const Blog = () => {
                 currentPosts.map((post) => (
                 <article key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                   <div className="md:flex">
-                    <div className="md:w-1/3">
+                    <Link to={`/post/${post.id}`} className="md:w-1/3 cursor-pointer">
                       <img
                         src={post.image}
                         alt={post.title}
-                        className="w-full h-48 md:h-full object-cover"
+                        className="w-full h-48 md:h-full object-cover hover:opacity-90 transition-opacity"
                       />
-                    </div>
+                    </Link>
                     <div className="md:w-2/3 p-6">
                       <div className="flex items-center mb-3">
                         <img
@@ -435,7 +435,7 @@ const Blog = () => {
                       </div>
 
                       <h2 className="text-xl font-semibold text-gray-900 mb-3 hover:text-primary-600 transition-colors">
-                        <Link to={`/post/${post.id}`}>{post.title}</Link>
+                        <Link to={`/post/${post.id}`} className="cursor-pointer">{post.title}</Link>
                       </h2>
 
                       <p className="text-gray-600 mb-4 line-clamp-2">
