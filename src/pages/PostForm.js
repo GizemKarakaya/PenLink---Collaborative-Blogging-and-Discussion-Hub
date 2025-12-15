@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import api from '../config/api';
 
 const PostForm = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const PostForm = () => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -26,26 +28,46 @@ const PostForm = () => {
     }
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
+    fetchCategories();
 
     // If edit mode, load post data
     if (isEditMode) {
-      // TODO: Load post data from API
-      setFormData({
-        title: 'Modern Web Geliştirmede En İyi Pratikler',
-        content: 'Web geliştirme dünyası sürekli olarak değişiyor...',
-        category: 'development',
-        tags: 'React, JavaScript, Web Development',
-        excerpt: '2024 yılında web geliştirme dünyasında dikkat edilmesi gereken önemli noktalar.'
-      });
+      fetchPost();
     }
   }, [id, navigate, isEditMode]);
 
-  const categories = [
-    { id: 'technology', name: 'Teknoloji' },
-    { id: 'design', name: 'Tasarım' },
-    { id: 'development', name: 'Geliştirme' },
-    { id: 'business', name: 'İş Dünyası' }
-  ];
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      // Ensure categories have _id or id field
+      const formattedCategories = response.data.map(cat => ({
+        ...cat,
+        id: cat._id || cat.id
+      }));
+      setCategories(formattedCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchPost = async () => {
+    try {
+      const response = await api.get(`/posts/${id}`);
+      const post = response.data;
+      setFormData({
+        title: post.title,
+        content: post.content,
+        category: post.category?._id || post.category,
+        tags: post.tags?.join(', ') || '',
+        excerpt: post.excerpt || ''
+      });
+      if (post.image) {
+        setImagePreview(post.image);
+      }
+    } catch (error) {
+      console.error('Error fetching post:', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,21 +110,50 @@ const PostForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.category) {
+      alert('Lütfen bir kategori seçiniz.');
+      return;
+    }
+    
+    if (!formData.title.trim()) {
+      alert('Lütfen başlık giriniz.');
+      return;
+    }
+    
+    if (!formData.content.trim()) {
+      alert('Lütfen içerik giriniz.');
+      return;
+    }
+    
     setIsLoading(true);
 
-    // Prepare form data with image
-    const submitData = {
-      ...formData,
-      image: image,
-      imagePreview: imagePreview
-    };
+    try {
+      const submitData = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        excerpt: formData.excerpt.trim(),
+        category: formData.category,
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+        image: imagePreview || null
+      };
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Post saved:', submitData);
-      setIsLoading(false);
+      if (isEditMode) {
+        await api.put(`/posts/${id}`, submitData);
+      } else {
+        await api.post('/posts', submitData);
+      }
+      
       navigate('/');
-    }, 1000);
+    } catch (error) {
+      console.error('Error saving post:', error);
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.error || error.message || 'Yazı kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.';
+      alert(`Hata: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!user) {
@@ -226,7 +277,7 @@ const PostForm = () => {
               >
                 <option value="">Kategori seçiniz</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category._id || category.id} value={category._id || category.id}>
                     {category.name}
                   </option>
                 ))}

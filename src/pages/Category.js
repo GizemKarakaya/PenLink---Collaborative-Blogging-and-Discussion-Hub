@@ -1,135 +1,117 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Calendar, User, Tag, Search, Heart, MessageCircle, Share, ArrowLeft } from 'lucide-react';
+import api from '../config/api';
 
 const Category = () => {
   const { id } = useParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   const postsPerPage = 3;
 
-  const categories = [
-    { id: 'technology', name: 'Teknoloji' },
-    { id: 'design', name: 'Tasarım' },
-    { id: 'development', name: 'Geliştirme' },
-    { id: 'business', name: 'İş Dünyası' }
-  ];
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
-  const category = categories.find(cat => cat.id === id);
+  useEffect(() => {
+    fetchPosts();
+  }, [currentPage, id]);
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'Modern Web Geliştirmede En İyi Pratikler',
-      excerpt: '2024 yılında web geliştirme dünyasında dikkat edilmesi gereken önemli noktalar ve en iyi pratikler.',
-      author: 'Ahmet Yılmaz',
-      authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-      date: '15 Mart 2024',
-      category: 'development',
-      tags: ['React', 'JavaScript', 'Web Development'],
-      likes: 24,
-      comments: 8,
-      readTime: '5 dk',
-      image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
-    },
-    {
-      id: 2,
-      title: 'UI/UX Tasarımda Kullanıcı Deneyimi',
-      excerpt: 'Kullanıcı deneyimini ön planda tutarak etkili arayüz tasarımları nasıl oluşturulur?',
-      author: 'Elif Kaya',
-      authorAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-      date: '12 Mart 2024',
-      category: 'design',
-      tags: ['UI/UX', 'Design', 'User Experience'],
-      likes: 18,
-      comments: 12,
-      readTime: '7 dk',
-      image: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=400&h=250&fit=crop'
-    },
-    {
-      id: 3,
-      title: 'Yapay Zeka ve Geleceğin Teknolojileri',
-      excerpt: 'Yapay zeka teknolojilerinin gelecekteki etkileri ve yazılım geliştirme süreçlerine katkıları.',
-      author: 'Mehmet Demir',
-      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-      date: '10 Mart 2024',
-      category: 'technology',
-      tags: ['AI', 'Machine Learning', 'Future Tech'],
-      likes: 31,
-      comments: 15,
-      readTime: '8 dk',
-      image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=250&fit=crop'
-    },
-    {
-      id: 4,
-      title: 'Startup Dünyasında Başarı Hikayeleri',
-      excerpt: 'Başarılı startup girişimlerinin ortak özellikleri ve başarıya giden yolda dikkat edilmesi gerekenler.',
-      author: 'Zeynep Özkan',
-      authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face',
-      date: '8 Mart 2024',
-      category: 'business',
-      tags: ['Startup', 'Entrepreneurship', 'Success'],
-      likes: 22,
-      comments: 6,
-      readTime: '6 dk',
-      image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&h=250&fit=crop'
-    },
-    {
-      id: 5,
-      title: 'Node.js ile Backend Geliştirme',
-      excerpt: 'Node.js kullanarak modern backend uygulamaları geliştirme teknikleri ve en iyi pratikler.',
-      author: 'Mehmet Demir',
-      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-      date: '6 Mart 2024',
-      category: 'development',
-      tags: ['Node.js', 'Backend', 'JavaScript'],
-      likes: 15,
-      comments: 9,
-      readTime: '7 dk',
-      image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop'
-    },
-    {
-      id: 6,
-      title: 'Vue.js vs React Karşılaştırması',
-      excerpt: 'İki popüler frontend framework arasındaki farklar ve hangi durumda hangisini seçmeli.',
-      author: 'Ahmet Yılmaz',
-      authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-      date: '4 Mart 2024',
-      category: 'technology',
-      tags: ['Vue.js', 'React', 'Frontend'],
-      likes: 28,
-      comments: 14,
-      readTime: '8 dk',
-      image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=250&fit=crop'
-    },
-    {
-      id: 7,
-      title: 'Mobil Uygulama Tasarım Prensipleri',
-      excerpt: 'Kullanıcı dostu mobil uygulamalar tasarlarken dikkat edilmesi gereken temel prensipler.',
-      author: 'Elif Kaya',
-      authorAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-      date: '2 Mart 2024',
-      category: 'design',
-      tags: ['Mobile', 'UI/UX', 'Design'],
-      likes: 19,
-      comments: 7,
-      readTime: '6 dk',
-      image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=250&fit=crop'
+  // Calculate reading time based on content
+  const calculateReadTime = (content) => {
+    if (!content) return '1 dk';
+    
+    // Remove HTML tags and get plain text
+    const text = content.replace(/<[^>]*>/g, '').trim();
+    
+    // Count words (split by whitespace)
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Average reading speed: 200 words per minute
+    const readingSpeed = 200;
+    const minutes = Math.max(1, Math.ceil(wordCount / readingSpeed));
+    
+    return `${minutes} dk`;
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      const cats = [{ id: 'all', name: 'Tümü' }, ...response.data.map(cat => ({
+        id: cat._id || cat.slug,
+        name: cat.name
+      }))];
+      setCategories(cats);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
-  ];
+  };
 
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: postsPerPage,
+        sortBy: 'createdAt',
+        order: 'desc'
+      };
+      
+      if (id && id !== 'all') {
+        params.categoryId = id;
+      }
+
+      const response = await api.get('/posts', { params });
+      const posts = response.data.posts || response.data || [];
+      
+      const transformedPosts = posts.map(post => {
+        const isAdminAuthor = post.author?.role === 'admin' || post.author?.email === 'admin@penlink.com';
+        return {
+          id: post._id,
+          title: post.title,
+          excerpt: post.excerpt || post.content?.substring(0, 150) + '...',
+          author: post.author?.username || 'Bilinmeyen',
+          authorAvatar: isAdminAuthor ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+        date: new Date(post.createdAt).toLocaleDateString('tr-TR', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        category: post.category?._id || post.category,
+        categoryName: post.category?.name || 'Genel',
+        tags: post.tags || [],
+        likes: post.likesCount || post.likes?.length || 0,
+        comments: post.commentCount || 0,
+        readTime: calculateReadTime(post.content),
+        image: post.image || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
+        };
+      });
+      
+      setBlogPosts(transformedPosts);
+      setTotalPages(response.data.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setBlogPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const category = categories.find(cat => cat.id === id) || { name: 'Kategori' };
+
+  // Filter posts by search term (client-side filtering for search)
   const filteredPosts = blogPosts.filter(post => {
-    const matchesCategory = post.category === id;
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesSearch;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
-  const startIndex = (currentPage - 1) * postsPerPage;
-  const endIndex = startIndex + postsPerPage;
-  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+  // Posts already paginated from API
+  const currentPosts = filteredPosts;
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -205,7 +187,16 @@ const Category = () => {
 
         {/* Blog Posts */}
         <div className="space-y-6">
-          {currentPosts.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <p className="mt-4 text-gray-600">Yazılar yükleniyor...</p>
+            </div>
+          ) : currentPosts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">Bu kategoride henüz yazı bulunmamaktadır.</p>
+            </div>
+          ) : (
             currentPosts.map((post) => (
               <article key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 <div className="md:flex">
@@ -272,10 +263,6 @@ const Category = () => {
                 </div>
               </article>
             ))
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <p className="text-gray-600 text-lg">Bu kategoride henüz yazı bulunmamaktadır.</p>
-            </div>
           )}
         </div>
 

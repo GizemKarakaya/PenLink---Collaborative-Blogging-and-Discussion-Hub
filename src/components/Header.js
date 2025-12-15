@@ -22,8 +22,10 @@ const Header = () => {
       localStorage.removeItem('user');
       setUser(null);
       setIsLoggingOut(false);
-      navigate('/');
       setIsMenuOpen(false);
+      navigate('/');
+      // Sayfayı yenile
+      window.location.reload();
     }, 1000);
   };
 

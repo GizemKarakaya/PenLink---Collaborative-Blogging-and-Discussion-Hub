@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, User, Tag, Search, Filter, Plus, Heart, MessageCircle, Share } from 'lucide-react';
+import api from '../config/api';
 
 const Blog = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTag, setSelectedTag] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [copiedPostId, setCopiedPostId] = useState(null);
+  const [likedPosts, setLikedPosts] = useState(new Set());
   const [user, setUser] = useState(null);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [categories, setCategories] = useState([{ id: 'all', name: 'Tümü' }]);
+  const [popularTags, setPopularTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
   const postsPerPage = 3;
 
   useEffect(() => {
@@ -15,129 +24,224 @@ const Blog = () => {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+    fetchCategories();
   }, []);
 
-  const categories = [
-    { id: 'all', name: 'Tümü' },
-    { id: 'technology', name: 'Teknoloji' },
-    { id: 'design', name: 'Tasarım' },
-    { id: 'development', name: 'Geliştirme' },
-    { id: 'business', name: 'İş Dünyası' }
-  ];
+  useEffect(() => {
+    fetchPosts();
+  }, [currentPage, selectedCategory]);
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: 'Modern Web Geliştirmede En İyi Pratikler',
-      excerpt: '2024 yılında web geliştirme dünyasında dikkat edilmesi gereken önemli noktalar ve en iyi pratikler.',
-      author: 'Ahmet Yılmaz',
-      authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-      date: '15 Mart 2024',
-      category: 'development',
-      tags: ['React', 'JavaScript', 'Web Development'],
-      likes: 24,
-      comments: 8,
-      readTime: '5 dk',
-      image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
-    },
-    {
-      id: 2,
-      title: 'UI/UX Tasarımda Kullanıcı Deneyimi',
-      excerpt: 'Kullanıcı deneyimini ön planda tutarak etkili arayüz tasarımları nasıl oluşturulur?',
-      author: 'Elif Kaya',
-      authorAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-      date: '12 Mart 2024',
-      category: 'design',
-      tags: ['UI/UX', 'Design', 'User Experience'],
-      likes: 18,
-      comments: 12,
-      readTime: '7 dk',
-      image: 'https://images.unsplash.com/photo-1558655146-9f40138edfeb?w=400&h=250&fit=crop'
-    },
-    {
-      id: 3,
-      title: 'Yapay Zeka ve Geleceğin Teknolojileri',
-      excerpt: 'Yapay zeka teknolojilerinin gelecekteki etkileri ve yazılım geliştirme süreçlerine katkıları.',
-      author: 'Mehmet Demir',
-      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-      date: '10 Mart 2024',
-      category: 'technology',
-      tags: ['AI', 'Machine Learning', 'Future Tech'],
-      likes: 31,
-      comments: 15,
-      readTime: '8 dk',
-      image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=250&fit=crop'
-    },
-    {
-      id: 4,
-      title: 'Startup Dünyasında Başarı Hikayeleri',
-      excerpt: 'Başarılı startup girişimlerinin ortak özellikleri ve başarıya giden yolda dikkat edilmesi gerekenler.',
-      author: 'Zeynep Özkan',
-      authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face',
-      date: '8 Mart 2024',
-      category: 'business',
-      tags: ['Startup', 'Entrepreneurship', 'Success'],
-      likes: 22,
-      comments: 6,
-      readTime: '6 dk',
-      image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&h=250&fit=crop'
-    },
-    {
-      id: 5,
-      title: 'Node.js ile Backend Geliştirme',
-      excerpt: 'Node.js kullanarak modern backend uygulamaları geliştirme teknikleri ve en iyi pratikler.',
-      author: 'Mehmet Demir',
-      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face',
-      date: '6 Mart 2024',
-      category: 'development',
-      tags: ['Node.js', 'Backend', 'JavaScript'],
-      likes: 15,
-      comments: 9,
-      readTime: '7 dk',
-      image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=250&fit=crop'
-    },
-    {
-      id: 6,
-      title: 'Vue.js vs React Karşılaştırması',
-      excerpt: 'İki popüler frontend framework arasındaki farklar ve hangi durumda hangisini seçmeli.',
-      author: 'Ahmet Yılmaz',
-      authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
-      date: '4 Mart 2024',
-      category: 'technology',
-      tags: ['Vue.js', 'React', 'Frontend'],
-      likes: 28,
-      comments: 14,
-      readTime: '8 dk',
-      image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=250&fit=crop'
-    },
-    {
-      id: 7,
-      title: 'Mobil Uygulama Tasarım Prensipleri',
-      excerpt: 'Kullanıcı dostu mobil uygulamalar tasarlarken dikkat edilmesi gereken temel prensipler.',
-      author: 'Elif Kaya',
-      authorAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
-      date: '2 Mart 2024',
-      category: 'design',
-      tags: ['Mobile', 'UI/UX', 'Design'],
-      likes: 19,
-      comments: 7,
-      readTime: '6 dk',
-      image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=250&fit=crop'
+  // Handle like/unlike post
+  const handleLike = async (postId) => {
+    if (!user) {
+      navigate('/login');
+      return;
     }
-  ];
+    
+    try {
+      const response = await api.post(`/posts/${postId}/like`);
+      const newLikedPosts = new Set(likedPosts);
+      
+      if (response.data.isLiked) {
+        newLikedPosts.add(postId);
+      } else {
+        newLikedPosts.delete(postId);
+      }
+      
+      setLikedPosts(newLikedPosts);
+      
+      // Update the likes count in the post
+      setBlogPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { ...post, likes: response.data.likes }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Error liking post:', error);
+      if (error.response?.status === 401) {
+        navigate('/login');
+      } else {
+        alert('Beğeni işlemi sırasında bir hata oluştu.');
+      }
+    }
+  };
 
+  // Copy post URL to clipboard
+  const handleShare = async (postId) => {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        // Show success message
+        alert('✅ Başarıyla kopyalandı!');
+        setTimeout(() => {
+          setCopiedPostId(null);
+        }, 2000);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = postUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            setCopiedPostId(postId);
+            // Show success message
+            alert('✅ Başarıyla kopyalandı!');
+            setTimeout(() => {
+              setCopiedPostId(null);
+            }, 2000);
+          } else {
+            alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+          }
+        } catch (e) {
+          alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Copy failed:', err);
+      alert('❌ URL kopyalanamadı. Lütfen manuel olarak kopyalayın: ' + postUrl);
+    }
+  };
+
+  // Calculate reading time based on content
+  const calculateReadTime = (content) => {
+    if (!content) return '1 dk';
+    
+    // Remove HTML tags and get plain text
+    const text = content.replace(/<[^>]*>/g, '').trim();
+    
+    // Count words (split by whitespace)
+    const wordCount = text.split(/\s+/).filter(word => word.length > 0).length;
+    
+    // Average reading speed: 200 words per minute
+    const readingSpeed = 200;
+    const minutes = Math.max(1, Math.ceil(wordCount / readingSpeed));
+    
+    return `${minutes} dk`;
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      const cats = [{ id: 'all', name: 'Tümü' }, ...response.data.map(cat => ({
+        id: cat._id || cat.slug,
+        name: cat.name
+      }))];
+      setCategories(cats);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: postsPerPage,
+        sortBy: 'createdAt',
+        order: 'desc'
+      };
+      
+      if (selectedCategory !== 'all') {
+        params.categoryId = selectedCategory;
+      }
+
+      const response = await api.get('/posts', { params });
+      const posts = response.data.posts || response.data || [];
+      
+      // Get current user to check liked posts
+      const userData = localStorage.getItem('user');
+      const currentUser = userData ? JSON.parse(userData) : null;
+      const newLikedPosts = new Set();
+      
+      // Transform backend data to frontend format
+      const transformedPosts = posts.map(post => {
+        const isAdminAuthor = post.author?.role === 'admin' || post.author?.email === 'admin@penlink.com';
+        const isLiked = currentUser && post.likes && post.likes.some(likeId => 
+          likeId.toString() === (currentUser.id || currentUser._id).toString()
+        );
+        
+        // Add to liked posts set if user liked it
+        if (isLiked) {
+          newLikedPosts.add(post._id);
+        }
+        
+        return {
+          id: post._id,
+          title: post.title,
+          excerpt: post.excerpt || post.content?.substring(0, 150) + '...',
+          author: post.author?.username || 'Bilinmeyen',
+          authorAvatar: isAdminAuthor ? '/Attached_image.png' : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face',
+        date: new Date(post.createdAt).toLocaleDateString('tr-TR', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        category: post.category?._id || post.category,
+        categoryName: post.category?.name || 'Genel',
+        tags: post.tags || [],
+        likes: post.likesCount || post.likes?.length || 0,
+        comments: post.commentCount || 0,
+        readTime: calculateReadTime(post.content),
+        image: post.image || 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=250&fit=crop'
+        };
+      });
+      
+      // Update liked posts set
+      setLikedPosts(newLikedPosts);
+      
+      setBlogPosts(transformedPosts);
+      setTotalPages(response.data.totalPages || 1);
+      
+      // Extract all unique tags from posts for popular tags
+      const allTags = transformedPosts.flatMap(post => post.tags || []);
+      const uniqueTags = [...new Set(allTags.map(tag => tag.trim()))].filter(tag => tag);
+      // Get most common tags (limit to 6)
+      const tagCounts = {};
+      allTags.forEach(tag => {
+        const normalizedTag = tag.trim();
+        tagCounts[normalizedTag] = (tagCounts[normalizedTag] || 0) + 1;
+      });
+      const sortedTags = Object.keys(tagCounts)
+        .sort((a, b) => tagCounts[b] - tagCounts[a])
+        .slice(0, 6);
+      setPopularTags(sortedTags.length > 0 ? sortedTags : ['React', 'JavaScript', 'UI/UX', 'AI', 'Startup', 'Design']);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setBlogPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter posts by search term and tag (client-side filtering)
   const filteredPosts = blogPosts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    
+    // Filter by tag if selected (case-insensitive, trim whitespace)
+    const matchesTag = selectedTag 
+      ? post.tags && post.tags.some(tag => 
+          tag && tag.trim().toLowerCase() === selectedTag.trim().toLowerCase()
+        )
+      : true;
+    
+    return matchesSearch && matchesTag;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
-  const startIndex = (currentPage - 1) * postsPerPage;
-  const endIndex = startIndex + postsPerPage;
-  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+  // Pagination logic - posts already paginated from API
+  const currentPosts = filteredPosts;
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -181,24 +285,34 @@ const Blog = () => {
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Kategoriler</h3>
               <div className="space-y-2">
-                <Link
-                  to="/"
-                  className={`w-full block text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                     selectedCategory === 'all'
                       ? 'bg-primary-100 text-primary-700'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   Tümü
-                </Link>
+                </button>
                 {categories.filter(cat => cat.id !== 'all').map((category) => (
-                  <Link
+                  <button
                     key={category.id}
-                    to={`/category/${category.id}`}
-                    className="w-full block text-left px-3 py-2 rounded-lg text-sm transition-colors text-gray-600 hover:bg-gray-100"
+                    onClick={() => {
+                      setSelectedCategory(category.id);
+                      setCurrentPage(1);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      selectedCategory === category.id
+                        ? 'bg-primary-100 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                   >
                     {category.name}
-                  </Link>
+                  </button>
                 ))}
               </div>
             </div>
@@ -206,15 +320,42 @@ const Blog = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Popüler Etiketler</h3>
               <div className="flex flex-wrap gap-2">
-                {['React', 'JavaScript', 'UI/UX', 'AI', 'Startup', 'Design'].map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-primary-100 hover:text-primary-700 cursor-pointer transition-colors"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+                {popularTags.length > 0 ? (
+                  popularTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        if (selectedTag && selectedTag.toLowerCase() === tag.toLowerCase()) {
+                          setSelectedTag(null); // Deselect if already selected
+                        } else {
+                          setSelectedTag(tag);
+                          setCurrentPage(1); // Reset to first page
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm cursor-pointer transition-colors ${
+                        selectedTag && selectedTag.toLowerCase() === tag.toLowerCase()
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">Henüz etiket bulunmamaktadır.</p>
+                )}
               </div>
+              {selectedTag && (
+                <button
+                  onClick={() => {
+                    setSelectedTag(null);
+                    setCurrentPage(1);
+                  }}
+                  className="mt-3 text-sm text-primary-600 hover:text-primary-700 underline"
+                >
+                  Filtreyi Temizle
+                </button>
+              )}
             </div>
           </div>
 
@@ -256,16 +397,26 @@ const Blog = () => {
 
             {/* Blog Posts */}
             <div className="space-y-6">
-              {currentPosts.map((post) => (
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                  <p className="mt-4 text-gray-600">Yazılar yükleniyor...</p>
+                </div>
+              ) : currentPosts.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">Henüz yazı bulunmamaktadır.</p>
+                </div>
+              ) : (
+                currentPosts.map((post) => (
                 <article key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                   <div className="md:flex">
-                    <div className="md:w-1/3">
+                    <Link to={`/post/${post.id}`} className="md:w-1/3 cursor-pointer">
                       <img
                         src={post.image}
                         alt={post.title}
-                        className="w-full h-48 md:h-full object-cover"
+                        className="w-full h-48 md:h-full object-cover hover:opacity-90 transition-opacity"
                       />
-                    </div>
+                    </Link>
                     <div className="md:w-2/3 p-6">
                       <div className="flex items-center mb-3">
                         <img
@@ -284,7 +435,7 @@ const Blog = () => {
                       </div>
 
                       <h2 className="text-xl font-semibold text-gray-900 mb-3 hover:text-primary-600 transition-colors">
-                        <Link to={`/post/${post.id}`}>{post.title}</Link>
+                        <Link to={`/post/${post.id}`} className="cursor-pointer">{post.title}</Link>
                       </h2>
 
                       <p className="text-gray-600 mb-4 line-clamp-2">
@@ -307,11 +458,30 @@ const Blog = () => {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <button className="p-2 text-gray-400 hover:text-primary-600 transition-colors">
+                          <button 
+                            onClick={() => handleShare(post.id)}
+                            className={`p-2 transition-colors ${
+                              copiedPostId === post.id
+                                ? 'text-green-600 bg-green-50' 
+                                : 'text-gray-400 hover:text-primary-600'
+                            }`}
+                            title="Post URL'sini kopyala"
+                          >
                             <Share className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                            <Heart className="w-4 h-4" />
+                          <button 
+                            onClick={() => handleLike(post.id)}
+                            disabled={!user}
+                            className={`p-2 transition-colors ${
+                              !user
+                                ? 'text-gray-300 cursor-not-allowed opacity-50'
+                                : likedPosts.has(post.id)
+                                  ? 'text-red-500 hover:text-red-600'
+                                  : 'text-gray-400 hover:text-red-500'
+                            }`}
+                            title={!user ? 'Beğenmek için giriş yapmalısınız' : likedPosts.has(post.id) ? 'Beğeniyi kaldır' : 'Beğen'}
+                          >
+                            <Heart className={`w-4 h-4 ${likedPosts.has(post.id) ? 'fill-current' : ''}`} />
                           </button>
                         </div>
                       </div>
@@ -329,7 +499,8 @@ const Blog = () => {
                     </div>
                   </div>
                 </article>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Pagination */}

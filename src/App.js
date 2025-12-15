@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminPosts from './pages/AdminPosts';
 import AdminCategories from './pages/AdminCategories';
+import AdminMessages from './pages/AdminMessages';
 
 function App() {
   return (
@@ -62,6 +63,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminCategories />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/messages" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminMessages />
                 </ProtectedRoute>
               } 
             />
